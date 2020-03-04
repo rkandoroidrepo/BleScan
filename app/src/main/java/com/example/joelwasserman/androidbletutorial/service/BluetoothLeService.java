@@ -45,6 +45,9 @@ public class BluetoothLeService extends Service {
             "com.rauliyohmc.heartratemonitor.ACTION_DATA_AVAILABLE";
     public final static String EXTRA_DATA =
             "com.rauliyohmc.heartratemonitor.EXTRA_DATA";
+
+    public final static String ACTION_BIKE_POWER_AVAILABLE = "com.rauliyohmc.heartratemonitor.ACTION_BIKE_POWER_AVAILABLE";
+
     public final static UUID UUID_HEART_RATE_MEASUREMENT =
             UUID.fromString(GattHeartRateAttributes.UUID_HEART_RATE_MEASUREMENT);
     private final static String TAG = BluetoothLeService.class.getSimpleName();
@@ -91,17 +94,17 @@ public class BluetoothLeService extends Service {
                 Log.w(TAG, "onServicesDiscovered received: " + status);
             }
 
-           BluetoothGattService servicePower = gatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_POWER));
-            if (null != servicePower) {
-                Log.i(TAG, "Power Service Discovered - Success， status = " + status);
-                BluetoothGattCharacteristic characteristicPower = servicePower.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CYCLING_POWER));
-                if (null != characteristicPower) {
-                    gatt.setCharacteristicNotification(characteristicPower, true);
-                    BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
-                    firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                    gatt.writeDescriptor(firstDesc);
-                }
-            }
+//           BluetoothGattService servicePower = gatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_POWER));
+//            if (null != servicePower) {
+//                Log.i(TAG, "Power Service Discovered - Success， status = " + status);
+//                BluetoothGattCharacteristic characteristicPower = servicePower.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CYCLING_POWER));
+//                if (null != characteristicPower) {
+//                    gatt.setCharacteristicNotification(characteristicPower, true);
+//                    BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
+//                    firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+//                    gatt.writeDescriptor(firstDesc);
+//                }
+//            }
 
 //            BluetoothGattService serviceSpeedAndCadence = gatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_SPEED_AND_CADENCE));
 //            if (null != serviceSpeedAndCadence) {
@@ -131,7 +134,6 @@ public class BluetoothLeService extends Service {
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             Log.d(TAG, "onCharacteristicChanged() called. Heart rate value changed");
-            broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
 
 
             if (characteristic.getUuid().toString().equalsIgnoreCase(CHARACTERISTIC_UUID_CYCLING_POWER)) {
@@ -139,10 +141,15 @@ public class BluetoothLeService extends Service {
                 int flag = characteristic.getProperties();
                 int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
                 Log.i(TAG, "Power Data： power = " + power + " W");
+
                 //mCallbacks.onPowerReceived(power);
+                broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+            }else {
+                broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+
             }
 
-            if (characteristic.getUuid().toString().equalsIgnoreCase(CHARACTERISTIC_UUID_CSC_MEASUREMENT)) {
+         /*   if (characteristic.getUuid().toString().equalsIgnoreCase(CHARACTERISTIC_UUID_CSC_MEASUREMENT)) {
                 // Read and calculate speed and cadence value
                 int offset = 0;
                 final int flag = characteristic.getValue()[offset];
@@ -180,7 +187,7 @@ public class BluetoothLeService extends Service {
 
                // mCallbacks.onSpeedMeasurementReceived(wheelRevolutions, lastWheelEventTime);
               //  mCallbacks.onCadenceMeasurementReceived(crankRevolutions, lastCrankEventTime);
-            }
+            }*/
 
         }
     };
@@ -215,6 +222,12 @@ public class BluetoothLeService extends Service {
         sendBroadcast(intent);
     }
 
+    private void broadcastBikePower(String action,String power){
+        final Intent intent = new Intent(action);
+        intent.putExtra(EXTRA_DATA, power);
+        sendBroadcast(intent);
+    }
+
     private void broadcastUpdate(final String action,
                                  final BluetoothGattCharacteristic characteristic) {
         final Intent intent = new Intent(action);
@@ -237,17 +250,33 @@ public class BluetoothLeService extends Service {
             // We send the heartRate value to our Server throughout a HTTP post request
             //httpConnection.sendHeartRateToWebServer(heartRate);
             intent.putExtra(EXTRA_DATA, String.valueOf(heartRate));
-        } else {
-            // Inform the web server to disconnect
-           // httpConnection.sendHeartRateToWebServer(0);
-            // For all other profiles, writes the data formatted in HEX.
-            final byte[] data = characteristic.getValue();
-            if (data != null && data.length > 0) {
-                final StringBuilder stringBuilder = new StringBuilder(data.length);
-                for (byte byteChar : data)
-                    stringBuilder.append(String.format("%02X ", byteChar));
-                intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+        }
+//        else if(CHARACTERISTIC_UUID_CYCLING_POWER.equalsIgnoreCase(characteristic.getUuid().toString())){
+//            int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
+//            intent.putExtra(EXTRA_DATA, String.valueOf(power));
+//        }
+
+        else {
+
+            if(CHARACTERISTIC_UUID_CYCLING_POWER.equalsIgnoreCase(characteristic.getUuid().toString())){
+            int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
+            intent.putExtra(EXTRA_DATA, String.valueOf(power));
+         }else {
+
+
+                // Inform the web server to disconnect
+                // httpConnection.sendHeartRateToWebServer(0);
+                // For all other profiles, writes the data formatted in HEX.
+
+                final byte[] data = characteristic.getValue();
+                if (data != null && data.length > 0) {
+                    final StringBuilder stringBuilder = new StringBuilder(data.length);
+                    for (byte byteChar : data)
+                        stringBuilder.append(String.format("%02X ", byteChar));
+                    intent.putExtra(EXTRA_DATA, new String(data) + "\n" + stringBuilder.toString());
+                }
             }
+
         }
         sendBroadcast(intent);
     }
@@ -397,6 +426,21 @@ public class BluetoothLeService extends Service {
         if (bluetoothGatt == null) return null;
 
         return bluetoothGatt.getServices();
+    }
+
+    public BluetoothGatt getBluetoothGatt(){
+        if (bluetoothGatt == null) return null;
+
+        return bluetoothGatt;
+    }
+
+    public void getBikePower(BluetoothGattCharacteristic characteristicPower){
+        if (null != characteristicPower) {
+            bluetoothGatt.setCharacteristicNotification(characteristicPower, true);
+            BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
+            firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            bluetoothGatt.writeDescriptor(firstDesc);
+        }
     }
 
     public class LocalBinder extends Binder {

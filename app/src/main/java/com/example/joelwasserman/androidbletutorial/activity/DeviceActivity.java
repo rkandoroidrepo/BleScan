@@ -1,6 +1,8 @@
 package com.example.joelwasserman.androidbletutorial.activity;
 
+import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -16,10 +18,13 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ExpandableListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager;
 import com.example.joelwasserman.androidbletutorial.R;
 import com.example.joelwasserman.androidbletutorial.service.BluetoothLeService;
 import com.example.joelwasserman.androidbletutorial.util.AllGattCharacteristics;
@@ -30,6 +35,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+
+import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager.CHARACTERISTIC_UUID_CYCLING_POWER;
 
 /**
  * Created by rauliyohmc on 05/03/15.
@@ -56,6 +63,8 @@ public class DeviceActivity extends ActionBarActivity {
     private String deviceAddress;
     private ExpandableListView gattServicesList;
     private BluetoothLeService bluetoothLeService;
+    private Button btnPower;
+    private TextView powerValue;
     /**
      * Code to manage BluetoothLeService lifecycle
      */
@@ -108,7 +117,15 @@ public class DeviceActivity extends ActionBarActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
-            if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
+            if(BluetoothLeService.ACTION_BIKE_POWER_AVAILABLE.equals(action)){
+//                int flag = characteristic.getProperties();
+//                int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
+
+                String power = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
+
+                Log.i(TAG, "Power Data： power2 = " + power + " W");
+                powerValue.setText("Bike Power:-"+power +" W");
+            } else if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
                 connected = true;
                 updateConnectionState(R.string.connected);
                 invalidateOptionsMenu();
@@ -125,6 +142,7 @@ public class DeviceActivity extends ActionBarActivity {
                 // Show all the supported services and characteristics on the user interface.
                 displayGattServices(bluetoothLeService.getSupportedGattServices());
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
+                powerValue.setText(powerValue.getText()+"\n"+"Power:-"+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
             }
         }
@@ -190,6 +208,8 @@ public class DeviceActivity extends ActionBarActivity {
         deviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
         getSupportActionBar().setTitle(deviceName);
         deviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
+        powerValue = (TextView) findViewById(R.id.txt_power_value);
+        btnPower = (Button)findViewById(R.id.get_power);
 
         // Sets up UI references.
         ((TextView) findViewById(R.id.device_address)).setText(deviceAddress);
@@ -201,6 +221,7 @@ public class DeviceActivity extends ActionBarActivity {
         //Intent locationServiceIntent = new Intent(this, LocationService.class);
         bindService(gattServiceIntent, serviceConnectionBluetooth, BIND_AUTO_CREATE);
        // bindService(locationServiceIntent, serviceConnectionLocation, BIND_AUTO_CREATE);
+        displayPower();
     }
 
     @Override
@@ -349,5 +370,28 @@ public class DeviceActivity extends ActionBarActivity {
         final long LSB = 0x800000805f9b34fbL;
         long value = i & 0xFFFFFFFF;
         return new UUID(MSB | (value << 32), LSB);
+    }
+
+    public void displayPower(){
+        btnPower.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                BluetoothGatt bluetoothGatt = bluetoothLeService.getBluetoothGatt();
+                BluetoothGattService servicePower = bluetoothGatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_POWER));
+                if (null != servicePower) {
+                   // Log.i(TAG, "Power Service Discovered - Success， status = " + status);
+                    BluetoothGattCharacteristic characteristicPower = servicePower.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CYCLING_POWER));
+                    if (null != characteristicPower) {
+                        bluetoothLeService.getBikePower(characteristicPower);
+//                        gatt.setCharacteristicNotification(characteristicPower, true);
+//                        BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
+//                        firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+//                        gatt.writeDescriptor(firstDesc);
+                    }
+                }else {
+                    Toast.makeText(DeviceActivity.this, "Service not discovered", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
     }
 }

@@ -155,8 +155,7 @@ public class DeviceActivity extends ActionBarActivity {
                         }
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                             notifyCharacteristic = characteristic;
-                            bluetoothLeService.setCharacteristicNotification(
-                                    characteristic, true);
+                            bluetoothLeService.setCharacteristicNotification( characteristic, true);
                         }
                         return true;
                     }

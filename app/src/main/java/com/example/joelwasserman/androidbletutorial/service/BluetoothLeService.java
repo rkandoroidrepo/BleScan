@@ -16,10 +16,14 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager;
 import com.example.joelwasserman.androidbletutorial.util.GattHeartRateAttributes;
 
 import java.util.List;
 import java.util.UUID;
+
+import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager.CHARACTERISTIC_UUID_CSC_MEASUREMENT;
+import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager.CHARACTERISTIC_UUID_CYCLING_POWER;
 
 /**
  * Created by rauliyohmc on 05/03/15.
@@ -86,6 +90,34 @@ public class BluetoothLeService extends Service {
             } else {
                 Log.w(TAG, "onServicesDiscovered received: " + status);
             }
+
+           BluetoothGattService servicePower = gatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_POWER));
+            if (null != servicePower) {
+                Log.i(TAG, "Power Service Discovered - Success， status = " + status);
+                BluetoothGattCharacteristic characteristicPower = servicePower.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CYCLING_POWER));
+                if (null != characteristicPower) {
+                    gatt.setCharacteristicNotification(characteristicPower, true);
+                    BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
+                    firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                    gatt.writeDescriptor(firstDesc);
+                }
+            }
+
+//            BluetoothGattService serviceSpeedAndCadence = gatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_SPEED_AND_CADENCE));
+//            if (null != serviceSpeedAndCadence) {
+//                for (BluetoothGattCharacteristic characteristic : serviceSpeedAndCadence.getCharacteristics()) {
+//                    Log.w(TAG, "#### CSC Sensor - Characteristic UUID : " + characteristic.getUuid().toString().toUpperCase());
+//                }
+//
+//                BluetoothGattCharacteristic characteristicCSC = serviceSpeedAndCadence.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CSC_MEASUREMENT));
+//                if (characteristicCSC != null) {
+//                    gatt.setCharacteristicNotification(characteristicCSC, true);
+//                    BluetoothGattDescriptor firstDesc = characteristicCSC.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
+//                    firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+//                    gatt.writeDescriptor(firstDesc);
+//                }
+//            }
+
         }
 
         @Override
@@ -100,6 +132,56 @@ public class BluetoothLeService extends Service {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             Log.d(TAG, "onCharacteristicChanged() called. Heart rate value changed");
             broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+
+
+            if (characteristic.getUuid().toString().equalsIgnoreCase(CHARACTERISTIC_UUID_CYCLING_POWER)) {
+                // Read power data
+                int flag = characteristic.getProperties();
+                int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
+                Log.i(TAG, "Power Data： power = " + power + " W");
+                //mCallbacks.onPowerReceived(power);
+            }
+
+            if (characteristic.getUuid().toString().equalsIgnoreCase(CHARACTERISTIC_UUID_CSC_MEASUREMENT)) {
+                // Read and calculate speed and cadence value
+                int offset = 0;
+                final int flag = characteristic.getValue()[offset];
+                offset += 1;
+
+                // Wheel Revolution Data Present, index 0, size 1 bit, 0 False, 1 True
+                final boolean wheelRevPresent = (flag & 0x01) > 0;
+
+                // Field exists if the key of bit 0 of the Flags field is set to 1
+                int wheelRevolutions = 0;       // wheel revolutions count
+                // Unit has a resolution of 1/1024s.
+                // C1: Field exists if the key of bit 0 of the Flags field is set to 1.
+                int lastWheelEventTime = 0;     // wheel data last capture time
+                if (wheelRevPresent) {
+                    wheelRevolutions = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32, offset);
+                    offset += 4;
+
+                    lastWheelEventTime = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
+                    offset += 2;
+                }
+
+                // Crank Revolution Data Present, index 1, size 1 bit, 0 False, 1 True.
+                final boolean crankRevPresent = (flag & 0x02) > 0;
+                int crankRevolutions = 0;   // Crank revolution count
+                int lastCrankEventTime = 0;
+                if (crankRevPresent) {
+                    crankRevolutions = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
+                    offset += 2;
+
+                    lastCrankEventTime = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
+                }
+
+                System.out.println(TAG+"Speed-"+wheelRevolutions+"-lastWheelEventTime-"+lastWheelEventTime);
+                System.out.println(TAG+"Cadence-"+crankRevolutions+"-lastCrankEventTime-"+lastCrankEventTime);
+
+               // mCallbacks.onSpeedMeasurementReceived(wheelRevolutions, lastWheelEventTime);
+              //  mCallbacks.onCadenceMeasurementReceived(crankRevolutions, lastCrankEventTime);
+            }
+
         }
     };
     private String currentLatitude;

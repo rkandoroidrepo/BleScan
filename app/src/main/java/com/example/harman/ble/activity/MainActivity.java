@@ -1,4 +1,4 @@
-package com.example.joelwasserman.androidbletutorial.activity;
+package com.example.harman.ble.activity;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
@@ -9,7 +9,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
@@ -25,7 +24,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.joelwasserman.androidbletutorial.R;
+import com.example.harman.ble.R;
 
 import java.util.ArrayList;
 
@@ -48,14 +47,14 @@ public class MainActivity extends AppCompatActivity {
     private Handler handler; // to handle a timeout for the scanning process
     // Device scan callback.
     private BluetoothAdapter.LeScanCallback callback =
-             new BluetoothAdapter.LeScanCallback() {
+            new BluetoothAdapter.LeScanCallback() {
 
                 @Override
                 public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            if(device.getName()!=null&&device.getName().contains("Stages")) {
+                            if (device.getName() != null && device.getName().contains("Stages")) {
                                 deviceListAdapter.addDevice(device);
                                 deviceListAdapter.notifyDataSetChanged();
                             }
@@ -69,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //toolbar = (Toolbar) findViewById(R.id.app_bar);
-       // setSupportActionBar(toolbar);
+        // setSupportActionBar(toolbar);
         handler = new Handler(); // handler object created in mainActivity, hence it's stuck in the message queue of the main Thread
         listView = (ListView) findViewById(R.id.devicesListView);
         progressBar = (ProgressBar) findViewById(R.id.progress_bar);

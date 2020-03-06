@@ -1,12 +1,11 @@
-package com.example.joelwasserman.androidbletutorial.util;
+package com.example.harman.ble.util;
 
 import java.util.HashMap;
 import java.util.UUID;
 
 public class AllGattServices {
-    private static HashMap<String, String> attributes = new HashMap();
-
     public static String HEART_RATE_MEASUREMENT = "00002a37-0000-1000-8000-00805f9b34fb";
+    private static HashMap<String, String> attributes = new HashMap();
 
     static {
         attributes.put("00001800-0000-1000-8000-00805f9b34fb", "Generic Access");

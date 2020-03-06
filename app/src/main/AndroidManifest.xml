@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.joelwasserman.androidbletutorial">
+    package="com.example.harman.ble">
 
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
@@ -21,11 +21,11 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".activity.DeviceActivity"
+            android:name="com.example.harman.ble.activity.DeviceActivity"
             android:label="@string/title_activity_device" >
-            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".activity.MainActivity"/>
+            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value="com.example.harman.ble.activity.MainActivity"/>
         </activity>
-        <service android:name=".service.BluetoothLeService" android:enabled="true"/>
+        <service android:name="com.example.harman.ble.service.BluetoothLeService" android:enabled="true"/>
 
     </application>
 

@@ -1,8 +1,7 @@
-package com.example.joelwasserman.androidbletutorial.activity;
+package com.example.harman.ble.activity;
 
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
-import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -24,19 +23,18 @@ import android.widget.SimpleExpandableListAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager;
-import com.example.joelwasserman.androidbletutorial.R;
-import com.example.joelwasserman.androidbletutorial.service.BluetoothLeService;
-import com.example.joelwasserman.androidbletutorial.util.AllGattCharacteristics;
-import com.example.joelwasserman.androidbletutorial.util.AllGattServices;
-import com.example.joelwasserman.androidbletutorial.util.GattHeartRateAttributes;
+import com.example.harman.ble.BLEPowerSensorManager;
+import com.example.harman.ble.R;
+import com.example.harman.ble.service.BluetoothLeService;
+import com.example.harman.ble.util.AllGattCharacteristics;
+import com.example.harman.ble.util.AllGattServices;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager.CHARACTERISTIC_UUID_CYCLING_POWER;
+import static com.example.harman.ble.BLEPowerSensorManager.CHARACTERISTIC_UUID_CYCLING_POWER;
 
 /**
  * Created by rauliyohmc on 05/03/15.
@@ -56,6 +54,23 @@ public class DeviceActivity extends ActionBarActivity {
     private final static String TAG = DeviceActivity.class.getSimpleName();
     private final String LIST_NAME = "NAME";
     private final String LIST_UUID = "UUID";
+    /**
+     * Code to manage LocationService lifecycle
+     */
+    private final ServiceConnection serviceConnectionLocation = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            Log.d(TAG, "Location Service bound to BluetoothLeService successfully");
+            // callback fired when the connection has been established.
+            // now we can interact with all the methods exposed by LocationService class
+            //locationService = ((LocationService.LocalBinder) service).getService();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            //locationService = null;
+        }
+    };
     private Toolbar toolbar;
     private TextView connectionState;
     private TextView dataField;
@@ -63,8 +78,6 @@ public class DeviceActivity extends ActionBarActivity {
     private String deviceAddress;
     private ExpandableListView gattServicesList;
     private BluetoothLeService bluetoothLeService;
-    private Button btnPower;
-    private TextView powerValue;
     /**
      * Code to manage BluetoothLeService lifecycle
      */
@@ -85,24 +98,9 @@ public class DeviceActivity extends ActionBarActivity {
             bluetoothLeService = null;
         }
     };
+    private Button btnPower;
     //private LocationService locationService;
-    /**
-     * Code to manage LocationService lifecycle
-     */
-    private final ServiceConnection serviceConnectionLocation = new ServiceConnection() {
-        @Override
-        public void onServiceConnected(ComponentName name, IBinder service) {
-            Log.d(TAG, "Location Service bound to BluetoothLeService successfully");
-            // callback fired when the connection has been established.
-            // now we can interact with all the methods exposed by LocationService class
-            //locationService = ((LocationService.LocalBinder) service).getService();
-        }
-
-        @Override
-        public void onServiceDisconnected(ComponentName name) {
-            //locationService = null;
-        }
-    };
+    private TextView powerValue;
     private ArrayList<ArrayList<BluetoothGattCharacteristic>> gattCharacteristicsModel;
     private boolean connected = false;
     /**
@@ -117,20 +115,20 @@ public class DeviceActivity extends ActionBarActivity {
         @Override
         public void onReceive(Context context, Intent intent) {
             final String action = intent.getAction();
-            if(BluetoothLeService.ACTION_BIKE_POWER_AVAILABLE.equals(action)){
+            if (BluetoothLeService.ACTION_BIKE_POWER_AVAILABLE.equals(action)) {
 //                int flag = characteristic.getProperties();
 //                int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
 
                 String power = intent.getStringExtra(BluetoothLeService.EXTRA_DATA);
 
                 Log.i(TAG, "Power Data： power2 = " + power + " W");
-                powerValue.setText("Bike Power:-"+power +" W");
+                powerValue.setText("Bike Power:-" + power + " W");
             } else if (BluetoothLeService.ACTION_GATT_CONNECTED.equals(action)) {
                 connected = true;
                 updateConnectionState(R.string.connected);
                 invalidateOptionsMenu();
                 // Once the GATT client-server connection is established, we connect to the googleApiClient for location
-               // locationService.createGoogleApiClient();
+                // locationService.createGoogleApiClient();
             } else if (BluetoothLeService.ACTION_GATT_DISCONNECTED.equals(action)) {
                 connected = false;
                 updateConnectionState(R.string.disconnected);
@@ -142,7 +140,7 @@ public class DeviceActivity extends ActionBarActivity {
                 // Show all the supported services and characteristics on the user interface.
                 displayGattServices(bluetoothLeService.getSupportedGattServices());
             } else if (BluetoothLeService.ACTION_DATA_AVAILABLE.equals(action)) {
-                powerValue.setText(powerValue.getText()+"\n"+"Power:-"+intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
+                powerValue.setText("Power:-" + intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
                 displayData(intent.getStringExtra(BluetoothLeService.EXTRA_DATA));
             }
         }
@@ -173,7 +171,7 @@ public class DeviceActivity extends ActionBarActivity {
                         }
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
                             notifyCharacteristic = characteristic;
-                            bluetoothLeService.setCharacteristicNotification( characteristic, true);
+                            bluetoothLeService.setCharacteristicNotification(characteristic, true);
                         }
                         return true;
                     }
@@ -199,17 +197,17 @@ public class DeviceActivity extends ActionBarActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.gatt_services_characteristics);
-       //// toolbar = (Toolbar) findViewById(R.id.app_bar);
-       //// setSupportActionBar(toolbar);
-      //  getSupportActionBar().setHomeButtonEnabled(true);
-      //  getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        //// toolbar = (Toolbar) findViewById(R.id.app_bar);
+        //// setSupportActionBar(toolbar);
+        //  getSupportActionBar().setHomeButtonEnabled(true);
+        //  getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         final Intent intent = getIntent();
         deviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
         getSupportActionBar().setTitle(deviceName);
         deviceAddress = intent.getStringExtra(EXTRAS_DEVICE_ADDRESS);
         powerValue = (TextView) findViewById(R.id.txt_power_value);
-        btnPower = (Button)findViewById(R.id.get_power);
+        btnPower = (Button) findViewById(R.id.get_power);
 
         // Sets up UI references.
         ((TextView) findViewById(R.id.device_address)).setText(deviceAddress);
@@ -220,7 +218,7 @@ public class DeviceActivity extends ActionBarActivity {
         Intent gattServiceIntent = new Intent(this, BluetoothLeService.class);
         //Intent locationServiceIntent = new Intent(this, LocationService.class);
         bindService(gattServiceIntent, serviceConnectionBluetooth, BIND_AUTO_CREATE);
-       // bindService(locationServiceIntent, serviceConnectionLocation, BIND_AUTO_CREATE);
+        // bindService(locationServiceIntent, serviceConnectionLocation, BIND_AUTO_CREATE);
         displayPower();
     }
 
@@ -240,8 +238,6 @@ public class DeviceActivity extends ActionBarActivity {
     protected void onDestroy() {
         super.onDestroy();
         unbindService(serviceConnectionBluetooth);
-        unbindService(serviceConnectionLocation);
-        //locationService = null;
         bluetoothLeService = null;
     }
 
@@ -272,11 +268,11 @@ public class DeviceActivity extends ActionBarActivity {
                 return true;
             case R.id.menu_disconnect:
                 bluetoothLeService.disconnect();
-               // locationService.stopLocationUpdates();
+                // locationService.stopLocationUpdates();
                 return true;
             case android.R.id.home:
                 bluetoothLeService.close();
-               // locationService.close();
+                // locationService.close();
                 onBackPressed();
                 return true;
         }
@@ -337,7 +333,7 @@ public class DeviceActivity extends ActionBarActivity {
                     charas.add(gattCharacteristic);
                     HashMap<String, String> currentCharaData = new HashMap<String, String>();
                     uuid = gattCharacteristic.getUuid().toString();
-                    System.out.println("LOG:-UUID-"+uuid);
+                    System.out.println("LOG:-UUID-" + uuid);
                     currentCharaData.put(
                             LIST_NAME, AllGattCharacteristics.lookup(uuid, unknownCharaString));
                     currentCharaData.put(LIST_UUID, uuid);
@@ -372,23 +368,23 @@ public class DeviceActivity extends ActionBarActivity {
         return new UUID(MSB | (value << 32), LSB);
     }
 
-    public void displayPower(){
+    public void displayPower() {
         btnPower.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 BluetoothGatt bluetoothGatt = bluetoothLeService.getBluetoothGatt();
-                BluetoothGattService servicePower = bluetoothGatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_POWER));
+
+               BluetoothGattService servicePower = bluetoothGatt.getService(UUID.fromString(BLEPowerSensorManager.SERVICE_UUID_CYCLING_POWER));
+
                 if (null != servicePower) {
-                   // Log.i(TAG, "Power Service Discovered - Success， status = " + status);
-                    BluetoothGattCharacteristic characteristicPower = servicePower.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CYCLING_POWER));
+                    // Log.i(TAG, "Power Service Discovered - Success， status = " + status);
+                    //Bike power
+                     BluetoothGattCharacteristic characteristicPower = servicePower.getCharacteristic(UUID.fromString(CHARACTERISTIC_UUID_CYCLING_POWER));
+                    // Bike speed
                     if (null != characteristicPower) {
                         bluetoothLeService.getBikePower(characteristicPower);
-//                        gatt.setCharacteristicNotification(characteristicPower, true);
-//                        BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
-//                        firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-//                        gatt.writeDescriptor(firstDesc);
                     }
-                }else {
+                } else {
                     Toast.makeText(DeviceActivity.this, "Service not discovered", Toast.LENGTH_LONG).show();
                 }
             }

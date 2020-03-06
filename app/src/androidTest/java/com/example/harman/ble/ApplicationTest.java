@@ -1,4 +1,4 @@
-package com.example.joelwasserman.androidbletutorial;
+package com.example.harman.ble;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

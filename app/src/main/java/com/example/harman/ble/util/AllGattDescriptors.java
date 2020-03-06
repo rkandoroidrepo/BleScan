@@ -1,4 +1,4 @@
-package com.example.joelwasserman.androidbletutorial.util;
+package com.example.harman.ble.util;
 
 import java.util.HashMap;
 import java.util.UUID;

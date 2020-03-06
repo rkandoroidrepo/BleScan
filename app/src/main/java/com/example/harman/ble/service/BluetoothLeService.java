@@ -1,4 +1,4 @@
-package com.example.joelwasserman.androidbletutorial.service;
+package com.example.harman.ble.service;
 
 import android.app.Service;
 import android.bluetooth.BluetoothAdapter;
@@ -16,14 +16,13 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
-import com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager;
-import com.example.joelwasserman.androidbletutorial.util.GattHeartRateAttributes;
+import com.example.harman.ble.BLEPowerSensorManager;
+import com.example.harman.ble.util.GattHeartRateAttributes;
 
 import java.util.List;
 import java.util.UUID;
 
-import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager.CHARACTERISTIC_UUID_CSC_MEASUREMENT;
-import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager.CHARACTERISTIC_UUID_CYCLING_POWER;
+import static com.example.harman.ble.BLEPowerSensorManager.CHARACTERISTIC_UUID_CYCLING_POWER;
 
 /**
  * Created by rauliyohmc on 05/03/15.
@@ -35,6 +34,7 @@ import static com.example.joelwasserman.androidbletutorial.BLEPowerSensorManager
  */
 
 public class BluetoothLeService extends Service {
+
     public final static String ACTION_GATT_CONNECTED =
             "com.rauliyohmc.heartratemonitor.ACTION_GATT_CONNECTED";
     public final static String ACTION_GATT_DISCONNECTED =
@@ -61,7 +61,7 @@ public class BluetoothLeService extends Service {
     private BluetoothAdapter bluetoothAdapter;
     private String bluetoothDeviceAddress;
     private BluetoothGatt bluetoothGatt;
-//    private HttpConnection httpConnection;
+    //    private HttpConnection httpConnection;
     private int connectionState = STATE_DISCONNECTED;
     /**
      * Implements callback methods for GATT events that the app cares about.
@@ -79,7 +79,7 @@ public class BluetoothLeService extends Service {
 
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 // Inform the web server to disconnect
-               // httpConnection.sendHeartRateToWebServer(0);
+                // httpConnection.sendHeartRateToWebServer(0);
                 connectionState = STATE_DISCONNECTED;
                 Log.d(TAG, "Disconnected from GATT server.");
                 broadcastUpdate(ACTION_GATT_DISCONNECTED);
@@ -138,13 +138,48 @@ public class BluetoothLeService extends Service {
 
             if (characteristic.getUuid().toString().equalsIgnoreCase(CHARACTERISTIC_UUID_CYCLING_POWER)) {
                 // Read power data
-                int flag = characteristic.getProperties();
                 int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
                 Log.i(TAG, "Power Data： power = " + power + " W");
 
-                //mCallbacks.onPowerReceived(power);
+                // Bike speed
+                // Read and calculate speed and cadence value
+                int offset = 0;
+                final int flag = characteristic.getValue()[offset];
+                offset += 1;
+
+                // Wheel Revolution Data Present, index 0, size 1 bit, 0 False, 1 True
+                final boolean wheelRevPresent = (flag & 0x01) > 0;
+
+                // Field exists if the key of bit 0 of the Flags field is set to 1
+                int wheelRevolutions = 0;       // wheel revolutions count
+                // Unit has a resolution of 1/1024s.
+                // C1: Field exists if the key of bit 0 of the Flags field is set to 1.
+                int lastWheelEventTime = 0;     // wheel data last capture time
+                if (wheelRevPresent) {
+                    wheelRevolutions = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32, offset);
+                    offset += 4;
+
+                    lastWheelEventTime = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
+                    offset += 2;
+                }
+
+                // Crank Revolution Data Present, index 1, size 1 bit, 0 False, 1 True.
+                final boolean crankRevPresent = (flag & 0x02) > 0;
+                int crankRevolutions = 0;   // Crank revolution count
+                int lastCrankEventTime = 0;
+                if (crankRevPresent) {
+                    crankRevolutions = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
+                    offset += 2;
+
+                    lastCrankEventTime = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, offset);
+                }
+
+                System.out.println(TAG+"Speed-"+wheelRevolutions+"-lastWheelEventTime-"+lastWheelEventTime);
+                System.out.println(TAG+"Cadence-"+crankRevolutions+"-lastCrankEventTime-"+lastCrankEventTime);
+
+
                 broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
-            }else {
+            } else {
                 broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
 
             }
@@ -198,7 +233,7 @@ public class BluetoothLeService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-       // httpConnection = new HttpConnection(HttpConnection.URL_HEART_RATE);
+        // httpConnection = new HttpConnection(HttpConnection.URL_HEART_RATE);
     }
 
     @Override
@@ -222,7 +257,7 @@ public class BluetoothLeService extends Service {
         sendBroadcast(intent);
     }
 
-    private void broadcastBikePower(String action,String power){
+    private void broadcastBikePower(String action, String power) {
         final Intent intent = new Intent(action);
         intent.putExtra(EXTRA_DATA, power);
         sendBroadcast(intent);
@@ -258,10 +293,10 @@ public class BluetoothLeService extends Service {
 
         else {
 
-            if(CHARACTERISTIC_UUID_CYCLING_POWER.equalsIgnoreCase(characteristic.getUuid().toString())){
-            int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
-            intent.putExtra(EXTRA_DATA, String.valueOf(power));
-         }else {
+            if (CHARACTERISTIC_UUID_CYCLING_POWER.equalsIgnoreCase(characteristic.getUuid().toString())) {
+                int power = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT16, 2);
+                intent.putExtra(EXTRA_DATA, String.valueOf(power));
+            } else {
 
 
                 // Inform the web server to disconnect
@@ -428,16 +463,28 @@ public class BluetoothLeService extends Service {
         return bluetoothGatt.getServices();
     }
 
-    public BluetoothGatt getBluetoothGatt(){
+    public BluetoothGatt getBluetoothGatt() {
         if (bluetoothGatt == null) return null;
 
         return bluetoothGatt;
     }
 
-    public void getBikePower(BluetoothGattCharacteristic characteristicPower){
+    public void getBikePower(BluetoothGattCharacteristic characteristicPower) {
         if (null != characteristicPower) {
             bluetoothGatt.setCharacteristicNotification(characteristicPower, true);
             BluetoothGattDescriptor firstDesc = characteristicPower.getDescriptor(BLEPowerSensorManager.CLIENT_CHARACTERISTIC_CONFIG_DESCRIPTOR_UUID);
+            firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+            bluetoothGatt.writeDescriptor(firstDesc);
+        }
+    }
+
+    String speedService  = "d445fe01-d139-9a5d-6707-1cc6a58b6303";
+    String charec = "d445fe02-d139-9a5d-6707-1cc6a58b6303";
+    String desc = "00002902-0000-1000-8000-00805f9b34fb";
+    public void getBikeSpeed(BluetoothGattCharacteristic characteristic){
+        if(characteristic!=null){
+            bluetoothGatt.setCharacteristicNotification(characteristic, true);
+            BluetoothGattDescriptor firstDesc = characteristic.getDescriptor(UUID.fromString(desc));
             firstDesc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
             bluetoothGatt.writeDescriptor(firstDesc);
         }
